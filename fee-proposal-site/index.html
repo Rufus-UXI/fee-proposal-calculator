@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UXI Group — Fee Proposal Calculator</title>
+<style>
+  body { margin: 0; padding: 24px; background: #DDDCD2; display: flex; justify-content: center; }
+</style>
+</head>
+<body>
+<div id="fpc-root"><div id="fpc-fallback" style="font-family:sans-serif;padding:24px;color:#4B535A;">Loading…</div></div>
+<script>
+  setTimeout(function() {
+    var fb = document.getElementById('fpc-fallback');
+    if (fb && document.getElementById('fpc-root').children.length === 1) {
+      fb.innerHTML = 'This tool needs an internet connection to load (it fetches React from a CDN). If you\'re online and still seeing this, try refreshing.';
+    }
+  }, 4000);
+</script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+#fpc-root, #fpc-root * { box-sizing: border-box; }
+
+#fpc-root {
+  width: 100%;
+  --paper: #EEEDE5;
+  --paper-2: #F7F6F0;
+  --ink: #182229;
+  --ink-soft: #4B535A;
+  --graphite: #767D82;
+  --redline: #B3391D;
+  --redline-soft: #B3391D22;
+  --blue: #2F5D6B;
+  --hairline: #CFCEC3;
+  --hairline-strong: #A9A89C;
+  font-family: 'IBM Plex Sans', sans-serif;
+  color: var(--ink);
+  background: var(--paper);
+  padding: 0;
+  max-width: 980px;
+  margin: 0 auto;
+  border: 1px solid var(--hairline-strong);
+}
+
+.fpc-titleblock {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: end;
+  padding: 22px 26px 16px;
+  border-bottom: 2px solid var(--ink);
+  background: var(--paper-2);
+}
+.fpc-titleblock .practice {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  color: var(--graphite);
+  text-transform: uppercase;
+}
+.fpc-titleblock h1 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 700;
+  font-size: 26px;
+  letter-spacing: -0.01em;
+  margin: 4px 0 0;
+}
+.fpc-titleblock .meta {
+  text-align: right;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  color: var(--ink-soft);
+  line-height: 1.6;
+}
+.fpc-titleblock .meta span { color: var(--redline); font-weight: 600; }
+
+.fpc-body {
+  display: grid;
+  grid-template-columns: 1.05fr 1fr;
+  gap: 0;
+}
+@media (max-width: 760px) {
+  .fpc-body { grid-template-columns: 1fr; }
+}
+
+.fpc-panel { padding: 24px 26px; }
+.fpc-panel + .fpc-panel { border-left: 1px dashed var(--hairline-strong); }
+@media (max-width: 760px) {
+  .fpc-panel + .fpc-panel { border-left: none; border-top: 1px dashed var(--hairline-strong); }
+}
+
+.fpc-eyebrow {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--redline);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.fpc-eyebrow::before {
+  content: '';
+  width: 16px; height: 1px;
+  background: var(--redline);
+  display: inline-block;
+}
+
+.fpc-field { margin-bottom: 16px; }
+.fpc-field label {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  margin-bottom: 5px;
+}
+.fpc-field .hint { font-weight: 400; color: var(--graphite); font-size: 11.5px; }
+
+select, .fpc-field input[type="number"] {
+  width: 100%;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 14px;
+  padding: 9px 10px;
+  border: 1px solid var(--hairline-strong);
+  background: #fff;
+  color: var(--ink);
+  border-radius: 0;
+}
+select:focus, .fpc-field input:focus {
+  outline: 2px solid var(--blue);
+  outline-offset: 1px;
+}
+
+.fpc-units-row { display: flex; align-items: center; gap: 12px; }
+.fpc-units-row input[type="range"] { flex: 1; accent-color: var(--redline); }
+.fpc-units-row .fpc-unit-val {
+  font-family: 'IBM Plex Mono', monospace;
+  font-weight: 600;
+  font-size: 18px;
+  min-width: 46px;
+  text-align: right;
+}
+
+.fpc-addons { display: grid; gap: 8px; }
+.fpc-addon {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 9px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-size: 13px;
+}
+.fpc-addon:hover { border-color: var(--hairline-strong); }
+.fpc-addon input { accent-color: var(--redline); width: 15px; height: 15px; flex-shrink: 0; }
+.fpc-addon .fee {
+  margin-left: auto;
+  font-family: 'IBM Plex Mono', monospace;
+  color: var(--graphite);
+  font-size: 12px;
+}
+
+.fpc-schedule { width: 100%; border-collapse: collapse; font-size: 13px; }
+.fpc-schedule tr { border-bottom: 1px solid var(--hairline); }
+.fpc-schedule td { padding: 8px 2px; vertical-align: top; }
+.fpc-schedule td:last-child {
+  text-align: right;
+  font-family: 'IBM Plex Mono', monospace;
+  white-space: nowrap;
+}
+.fpc-schedule .label-main { font-weight: 500; }
+.fpc-schedule .label-sub { color: var(--graphite); font-size: 11.5px; }
+.fpc-schedule .empty-row td { color: var(--graphite); font-style: italic; padding: 14px 2px; }
+
+.fpc-total-wrap { margin-top: 18px; position: relative; }
+.fpc-total {
+  border: 2px dashed var(--redline);
+  padding: 16px 18px;
+  position: relative;
+  background: var(--redline-soft);
+}
+.fpc-total .t-label {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--redline);
+}
+.fpc-total .t-value {
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 700;
+  font-size: 34px;
+  color: var(--ink);
+  margin-top: 2px;
+}
+.fpc-total .t-value sup { font-size: 16px; color: var(--graphite); font-weight: 500; margin-left: 6px;}
+
+.fpc-scale {
+  margin-top: 14px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10.5px;
+  color: var(--graphite);
+}
+.fpc-scale-bar {
+  height: 6px;
+  background: repeating-linear-gradient(90deg, var(--ink) 0 10%, var(--paper-2) 0 20%);
+  border: 1px solid var(--ink);
+  margin: 5px 0 4px;
+  position: relative;
+}
+.fpc-scale-marker {
+  position: absolute;
+  top: -5px;
+  width: 2px;
+  height: 16px;
+  background: var(--redline);
+}
+.fpc-scale-labels { display: flex; justify-content: space-between; }
+
+.fpc-actions { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+button.fpc-btn {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-weight: 600;
+  font-size: 13px;
+  padding: 9px 16px;
+  border: 1px solid var(--ink);
+  background: var(--ink);
+  color: var(--paper-2);
+  cursor: pointer;
+  border-radius: 0;
+}
+button.fpc-btn:hover { background: var(--blue); border-color: var(--blue); }
+button.fpc-btn.secondary {
+  background: transparent;
+  color: var(--ink);
+}
+button.fpc-btn.secondary:hover { background: var(--hairline); border-color: var(--ink); color: var(--ink); }
+button.fpc-btn:focus-visible { outline: 2px solid var(--redline); outline-offset: 2px; }
+
+.fpc-rates-toggle {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--ink);
+  background: transparent;
+  border: 1px solid var(--ink);
+  cursor: pointer;
+  padding: 9px 16px;
+  margin-top: 20px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.fpc-rates-toggle:hover { background: var(--hairline); }
+.fpc-rates-toggle:focus-visible { outline: 2px solid var(--redline); outline-offset: 2px; }
+.fpc-rates-toggle .icon {
+  font-family: 'IBM Plex Mono', monospace;
+  color: var(--redline);
+}
+
+.fpc-history-toggle-wrap {
+  padding: 18px 26px;
+  border-top: 1px dashed var(--hairline-strong);
+  text-align: center;
+}
+.fpc-history-panel {
+  padding: 4px 26px 24px;
+}
+.fpc-history-empty {
+  font-size: 13px;
+  color: var(--graphite);
+  font-style: italic;
+  padding: 10px 0 4px;
+}
+.fpc-history-table { margin-top: 8px; }
+.fpc-history-table th {
+  text-align: left;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--graphite);
+  padding: 6px 8px 6px 2px;
+  border-bottom: 1px solid var(--hairline-strong);
+}
+.fpc-history-table td {
+  padding: 8px 8px 8px 2px;
+  font-size: 12.5px;
+  vertical-align: top;
+}
+.fpc-history-table td.mono { font-family: 'IBM Plex Mono', monospace; }
+.fpc-history-table td:last-child, .fpc-history-table th:last-child {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.fpc-rates-panel {
+  border-top: 3px solid var(--ink);
+  margin-top: 0;
+  padding: 22px 26px 28px;
+  background: var(--paper-2);
+}
+.fpc-rates-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 14px 20px;
+  margin-top: 12px;
+}
+.fpc-rates-grid .fpc-field { margin-bottom: 0; }
+.fpc-rates-grid .fpc-field label { font-size: 11.5px; }
+
+.fpc-footer {
+  border-top: 2px solid var(--ink);
+  padding: 12px 26px;
+  display: flex;
+  justify-content: space-between;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10.5px;
+  color: var(--graphite);
+  background: var(--paper-2);
+}
+
+.fpc-toast {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11.5px;
+  color: var(--blue);
+  min-height: 16px;
+  margin-top: 8px;
+}
+</style>
+
+<script type="text/babel" data-presets="react">
+const { useState, useEffect, useMemo, useCallback } = React;
+
+const DEFAULT_RATES = {
+  base: {
+    preapp:   { name: "Pre-Application Advice",     fee: 1100 },
+    outline:  { name: "Outline Planning Permission", fee: 3500 },
+    full:     { name: "Full Planning Permission",    fee: 4500 },
+    reserved: { name: "Reserved Matters",             fee: 3000 },
+    s73:      { name: "Section 73 Variation",         fee: 2000 },
+  },
+  tiers: [
+    { upTo: 10,  rate: 200 },
+    { upTo: 50,  rate: 96 },
+    { upTo: 100, rate: 82 },
+  ],
+  addons: {
+    masterplanning: { name: "Masterplanning Approach Required", fee: 1000 },
+    redesign:       { name: "Re-design",                        fee: 1500 },
+  },
+};
+
+const APP_TYPE_MAX = { preapp: 11000, outline: 13500, full: 14500, reserved: 13000, s73: 12000 };
+
+const gbp = (n) => n.toLocaleString('en-GB', { style: 'currency', currency: 'GBP', maximumFractionDigits: 0 });
+
+function tieredUnitFee(units, tiers) {
+  let remaining = units;
+  let prevCap = 0;
+  let total = 0;
+  const rows = [];
+  for (const tier of tiers) {
+    if (remaining <= 0) break;
+    const bandSize = tier.upTo - prevCap;
+    const unitsInBand = Math.min(remaining, bandSize);
+    if (unitsInBand > 0) {
+      const bandFee = unitsInBand * tier.rate;
+      total += bandFee;
+      rows.push({ from: prevCap + 1, to: prevCap + unitsInBand, rate: tier.rate, fee: bandFee, count: unitsInBand });
+    }
+    remaining -= unitsInBand;
+    prevCap = tier.upTo;
+  }
+  return { total, rows };
+}
+
+function App() {
+  const [rates, setRates] = useState(DEFAULT_RATES);
+  const [loaded, setLoaded] = useState(false);
+  const [appType, setAppType] = useState('full');
+  const [units, setUnits] = useState(12);
+  const [addons, setAddons] = useState({});
+  const [toast, setToast] = useState('');
+  const [projectName, setProjectName] = useState('');
+  const [projectCode, setProjectCode] = useState('');
+  const [proposals, setProposals] = useState([]);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [ratesOpen, setRatesOpen] = useState(false);
+  const codeTouched = React.useRef(false);
+
+  const suggestCode = (name) => {
+    const words = name.trim().split(/\s+/).filter(Boolean);
+    if (words.length === 0) return '';
+    if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+    return (words[0][0] + words[1][0]).toUpperCase();
+  };
+
+  const handleProjectName = (val) => {
+    setProjectName(val);
+    if (!codeTouched.current) {
+      setProjectCode(suggestCode(val));
+    }
+  };
+
+  const handleProjectCode = (val) => {
+    codeTouched.current = true;
+    setProjectCode(val.toUpperCase().slice(0, 4));
+  };
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch('/api/rates');
+        if (res.ok) {
+          const data = await res.json();
+          if (data) setRates(data);
+        }
+      } catch (e) {
+        // couldn't reach shared store — defaults stand, edits will be local only
+      } finally {
+        setLoaded(true);
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch('/api/proposals');
+        if (res.ok) {
+          const data = await res.json();
+          setProposals(data || []);
+        }
+      } catch (e) {
+        // couldn't reach shared store — history will just be empty
+      }
+    })();
+  }, []);
+
+  const saveRates = useCallback(async (next) => {
+    setRates(next);
+    try {
+      const res = await fetch('/api/rates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(next),
+      });
+      if (!res.ok) throw new Error('save failed');
+      setToast('Rates saved — shared with everyone using this link.');
+      setTimeout(() => setToast(''), 2500);
+    } catch (e) {
+      setToast('Could not reach shared store — this change applies to your browser only.');
+      setTimeout(() => setToast(''), 3500);
+    }
+  }, []);
+
+  const resetRates = useCallback(() => {
+    saveRates(DEFAULT_RATES);
+  }, [saveRates]);
+
+  const unitCalc = useMemo(() => tieredUnitFee(units, rates.tiers), [units, rates.tiers]);
+  const baseFee = rates.base[appType].fee;
+  const addonTotal = useMemo(() => {
+    return Object.keys(addons).filter(k => addons[k]).reduce((sum, k) => sum + (rates.addons[k]?.fee || 0), 0);
+  }, [addons, rates.addons]);
+  const total = baseFee + unitCalc.total + addonTotal;
+
+  const today = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  const codePart = projectCode ? `${projectCode}-` : '';
+  const jobRef = `UXI-${codePart}${appType.slice(0,3).toUpperCase()}-${String(units).padStart(3,'0')}`;
+
+  const copyText = () => {
+    let lines = [];
+    lines.push(`UXI GROUP — FEE PROPOSAL`);
+    lines.push(`Ref: ${jobRef}   Date: ${today}`);
+    if (projectName) lines.push(`Project: ${projectName}`);
+    lines.push(``);
+    lines.push(`Application type: ${rates.base[appType].name}`);
+    lines.push(`Number of units: ${units}`);
+    lines.push(``);
+    lines.push(`Base fee: ${gbp(baseFee)}`);
+    unitCalc.rows.forEach(r => {
+      lines.push(`Units ${r.from}-${r.to} @ ${gbp(r.rate)}/unit: ${gbp(r.fee)}`);
+    });
+    Object.keys(addons).filter(k => addons[k]).forEach(k => {
+      lines.push(`${rates.addons[k].name}: ${gbp(rates.addons[k].fee)}`);
+    });
+    lines.push(``);
+    lines.push(`TOTAL PROPOSED FEE: ${gbp(total)}`);
+    lines.push(``);
+    lines.push(`(Figures exclude VAT and disbursements. Base rates indicative — confirm before issue.)`);
+    const text = lines.join('\n');
+    navigator.clipboard?.writeText(text).then(() => {
+      setToast('Copied breakdown to clipboard.');
+      setTimeout(() => setToast(''), 2200);
+    }).catch(() => {
+      setToast('Could not copy — select and copy the schedule manually.');
+      setTimeout(() => setToast(''), 2500);
+    });
+  };
+
+  const saveProposal = async () => {
+    const scope = Object.keys(addons).filter(k => addons[k]).map(k => rates.addons[k].name);
+    const proposal = {
+      ref: jobRef,
+      projectName: projectName || '(untitled)',
+      appTypeName: rates.base[appType].name,
+      units,
+      scope,
+      total,
+      date: today,
+    };
+    try {
+      const res = await fetch('/api/proposals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(proposal),
+      });
+      if (!res.ok) throw new Error('save failed');
+      const updated = await res.json();
+      setProposals(updated);
+      setToast('Proposal saved to shared history.');
+      setTimeout(() => setToast(''), 2500);
+    } catch (e) {
+      setToast('Could not reach shared store — proposal was not saved.');
+      setTimeout(() => setToast(''), 3500);
+    }
+  };
+
+  const updateBaseRate = (key, val) => {
+    const next = { ...rates, base: { ...rates.base, [key]: { ...rates.base[key], fee: Number(val) || 0 } } };
+    saveRates(next);
+  };
+  const updateTierRate = (idx, val) => {
+    const next = { ...rates, tiers: rates.tiers.map((t, i) => i === idx ? { ...t, rate: Number(val) || 0 } : t) };
+    saveRates(next);
+  };
+  const updateAddonFee = (key, val) => {
+    const next = { ...rates, addons: { ...rates.addons, [key]: { ...rates.addons[key], fee: Number(val) || 0 } } };
+    saveRates(next);
+  };
+
+  if (!loaded) return null;
+
+  return (
+    <React.Fragment>
+      <div className="fpc-titleblock">
+        <div>
+          <div className="practice">UXI Group Ltd &nbsp;·&nbsp; Manchester</div>
+          <h1>Fee Proposal Calculator</h1>
+        </div>
+        <div className="meta">
+          {projectName && (<React.Fragment>{projectName}<br/></React.Fragment>)}
+          REF <span>{jobRef}</span><br/>
+          DATE {today}
+        </div>
+      </div>
+
+      <div className="fpc-body">
+        <div className="fpc-panel">
+          <div className="fpc-eyebrow">Schedule of works</div>
+
+          <div className="fpc-field">
+            <label htmlFor="fpc-projname">Project name</label>
+            <input
+              id="fpc-projname"
+              type="text"
+              placeholder="e.g. Peel Cottage"
+              value={projectName}
+              onChange={e => handleProjectName(e.target.value)}
+              style={{
+                width: '100%', fontFamily: "'IBM Plex Sans', sans-serif", fontSize: '14px',
+                padding: '9px 10px', border: '1px solid var(--hairline-strong)', background: '#fff', color: 'var(--ink)'
+              }}
+            />
+          </div>
+
+          <div className="fpc-field">
+            <label htmlFor="fpc-projcode">Reference code <span className="hint">(auto-suggested — edit as needed)</span></label>
+            <input
+              id="fpc-projcode"
+              type="text"
+              maxLength="4"
+              placeholder="PE"
+              value={projectCode}
+              onChange={e => handleProjectCode(e.target.value)}
+              style={{
+                width: '110px', fontFamily: "'IBM Plex Mono', monospace", fontSize: '14px', fontWeight: 600,
+                padding: '9px 10px', border: '1px solid var(--hairline-strong)', background: '#fff', color: 'var(--ink)',
+                letterSpacing: '0.04em'
+              }}
+            />
+          </div>
+
+          <div className="fpc-field">
+            <label htmlFor="fpc-apptype">Application type</label>
+            <select id="fpc-apptype" value={appType} onChange={e => setAppType(e.target.value)}>
+              {Object.entries(rates.base).map(([key, v]) => (
+                <option key={key} value={key}>{v.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="fpc-field">
+            <label htmlFor="fpc-units">Number of units <span className="hint">(2–100)</span></label>
+            <div className="fpc-units-row">
+              <input
+                id="fpc-units"
+                type="range" min="2" max="100" value={units}
+                onChange={e => setUnits(Number(e.target.value))}
+                aria-valuemin={2} aria-valuemax={100} aria-valuenow={units}
+              />
+              <span className="fpc-unit-val">{units}</span>
+            </div>
+          </div>
+
+          <div className="fpc-field">
+            <label>Additional scope</label>
+            <div className="fpc-addons">
+              {Object.entries(rates.addons).map(([key, v]) => (
+                <label className="fpc-addon" key={key}>
+                  <input
+                    type="checkbox"
+                    checked={!!addons[key]}
+                    onChange={e => setAddons(a => ({ ...a, [key]: e.target.checked }))}
+                  />
+                  {v.name}
+                  <span className="fee">+{gbp(v.fee)}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="fpc-panel">
+          <div className="fpc-eyebrow">Fee schedule</div>
+
+          <table className="fpc-schedule">
+            <tbody>
+              <tr>
+                <td>
+                  <div className="label-main">{rates.base[appType].name}</div>
+                  <div className="label-sub">Base fee</div>
+                </td>
+                <td>{gbp(baseFee)}</td>
+              </tr>
+              {unitCalc.rows.map((r, i) => (
+                <tr key={i}>
+                  <td>
+                    <div className="label-main">Units {r.from}–{r.to}</div>
+                    <div className="label-sub">{r.count} unit{r.count !== 1 ? 's' : ''} @ {gbp(r.rate)}</div>
+                  </td>
+                  <td>{gbp(r.fee)}</td>
+                </tr>
+              ))}
+              {Object.keys(addons).filter(k => addons[k]).map(k => (
+                <tr key={k}>
+                  <td><div className="label-main">{rates.addons[k].name}</div></td>
+                  <td>{gbp(rates.addons[k].fee)}</td>
+                </tr>
+              ))}
+              {Object.keys(addons).filter(k => addons[k]).length === 0 && (
+                <tr className="empty-row"><td colSpan="2">No additional scope selected</td></tr>
+              )}
+            </tbody>
+          </table>
+
+          <div className="fpc-total-wrap">
+            <div className="fpc-total">
+              <div className="t-label">Total proposed fee</div>
+              <div className="t-value">{gbp(total)}<sup>excl. VAT</sup></div>
+            </div>
+          </div>
+
+
+          <div className="fpc-actions">
+            <button className="fpc-btn" onClick={copyText}>Copy breakdown</button>
+            <button className="fpc-btn secondary" onClick={saveProposal}>Save fee proposal</button>
+          </div>
+          <div className="fpc-toast">{toast}</div>
+        </div>
+      </div>
+
+      <div className="fpc-history-toggle-wrap">
+        <button className="fpc-rates-toggle" onClick={() => setHistoryOpen(o => !o)}>
+          <span className="icon">{historyOpen ? '−' : '+'}</span>
+          {historyOpen ? 'Hide past fee proposals' : `Past fee proposals (${proposals.length})`}
+        </button>
+      </div>
+
+      {historyOpen && (
+        <div className="fpc-history-panel">
+          <div className="fpc-eyebrow">Saved fee proposals — shared with everyone using this link</div>
+          {proposals.length === 0 ? (
+            <div className="fpc-history-empty">No proposals saved yet. Use "Save fee proposal" above to add the current quote here.</div>
+          ) : (
+            <table className="fpc-schedule fpc-history-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Ref</th>
+                  <th>Project</th>
+                  <th>Type</th>
+                  <th>Units</th>
+                  <th>Scope</th>
+                  <th>Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {proposals.map((p, i) => (
+                  <tr key={p.id || i}>
+                    <td>{p.date}</td>
+                    <td className="mono">{p.ref}</td>
+                    <td>{p.projectName}</td>
+                    <td>{p.appTypeName}</td>
+                    <td>{p.units}</td>
+                    <td>{p.scope && p.scope.length ? p.scope.join(', ') : '—'}</td>
+                    <td className="mono">{gbp(p.total)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
+
+      <div className="fpc-history-toggle-wrap">
+        <button className="fpc-rates-toggle" onClick={() => setRatesOpen(o => !o)}>
+          <span className="icon">{ratesOpen ? '−' : '+'}</span>
+          {ratesOpen ? 'Hide rate card' : 'Edit rate card'}
+        </button>
+      </div>
+
+      {ratesOpen && (
+      <div className="fpc-rates-panel">
+        <div className="fpc-eyebrow">Rate card — edit any figure below</div>
+        <div className="fpc-rates-grid">
+          {Object.entries(rates.base).map(([key, v]) => (
+            <div className="fpc-field" key={key}>
+              <label>{v.name} — base fee (£)</label>
+              <input type="number" min="0" value={v.fee} onChange={e => updateBaseRate(key, e.target.value)} />
+            </div>
+          ))}
+          {rates.tiers.map((t, i) => {
+            const prevCap = i === 0 ? 1 : rates.tiers[i-1].upTo + 1;
+            return (
+              <div className="fpc-field" key={i}>
+                <label>Units {prevCap}–{t.upTo}: rate per unit (£)</label>
+                <input type="number" min="0" value={t.rate} onChange={e => updateTierRate(i, e.target.value)} />
+              </div>
+            );
+          })}
+          {Object.entries(rates.addons).map(([key, v]) => (
+            <div className="fpc-field" key={key}>
+              <label>{v.name} (£)</label>
+              <input type="number" min="0" value={v.fee} onChange={e => updateAddonFee(key, e.target.value)} />
+            </div>
+          ))}
+        </div>
+        <div className="fpc-actions">
+          <button className="fpc-btn secondary" onClick={resetRates}>Reset to defaults</button>
+        </div>
+      </div>
+      )}
+
+      <div className="fpc-footer">
+        <span>Indicative fee — confirm scope before issuing to client</span>
+        <span>Drawn: UXI &nbsp;·&nbsp; Rev A</span>
+      </div>
+    </React.Fragment>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('fpc-root')).render(<App />);
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+</body>
+</html>
